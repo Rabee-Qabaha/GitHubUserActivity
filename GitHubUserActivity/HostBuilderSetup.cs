@@ -20,6 +20,7 @@ public class HostBuilderSetup
             {
                 services.Configure<ApiSettings>(context.Configuration.GetSection("ApiSettings"));
                 services.AddHttpClient<IGitHubApiService, GitHubApiService>();
+                services.AddMemoryCache();
             })
             .ConfigureLogging(logging =>
             {

@@ -1,4 +1,5 @@
-﻿using GitHubUserActivity.Services;
+﻿using System.Diagnostics;
+using GitHubUserActivity.Services;
 using GitHubUserActivity.Utils;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -10,16 +11,25 @@ class Program
     {
         using var host = HostBuilderSetup.CreateHost(args);
 
-        Console.WriteLine("Enter a GitHub username:");
-        var inputUserName = Console.ReadLine();
-
-        if (string.IsNullOrWhiteSpace(inputUserName))
+        while (true)
         {
-            Console.WriteLine("Please provide a valid GitHub username.");
-            return;
-        }
+            Console.WriteLine("Enter a GitHub username (or type 'exit' to quit):");
+            var inputUserName = Console.ReadLine();
 
-        await ExecuteUserEventsAsync(host.Services, inputUserName);
+            if (string.Equals(inputUserName, "exit", StringComparison.OrdinalIgnoreCase))
+            {
+                Console.WriteLine("Exiting the application. Goodbye!");
+                break;
+            }
+
+            if (string.IsNullOrWhiteSpace(inputUserName))
+            {
+                Console.WriteLine("Please provide a valid GitHub username.");
+                continue;
+            }
+
+            await ExecuteUserEventsAsync(host.Services, inputUserName);
+        }
     }
 
     private static async Task ExecuteUserEventsAsync(IServiceProvider services, string username)
@@ -30,16 +40,23 @@ class Program
         try
         {
             var gitHubApiService = scopedServices.GetRequiredService<IGitHubApiService>();
+            var time = Stopwatch.StartNew();
+            time.Start();
             var events = await gitHubApiService.FetchAndFormatUserEvents(username);
-
+            time.Stop();
+            Console.WriteLine($"Took {time.ElapsedMilliseconds}ms to execute {events.Count} events.");
             foreach (var gitHubEvent in events)
             {
                 Console.WriteLine(ConsoleFormatter.FormatEvent(gitHubEvent));
             }
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
         {
             Console.WriteLine($"An error occurred: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"An unexpected error occurred: {ex.Message}");
         }
     }
 }
